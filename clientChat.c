@@ -38,18 +38,21 @@ int main(int argc, char const *argv[])
 
     valread = read(sock , buffer, 1024); 
     printf("%s\n",buffer );  
+    int opc;
+    char tmp[1024];
     
     while(1){
-    
-        scanf("\n%[^\n]s", msg);
-        send(sock , msg , strlen(msg) , 0 ); 
-
-        char tmp[1024];
-
-        valread = read(sock ,tmp, 1024);
-
-        tmp[valread] = '\0';
-        printf("%s\n",tmp ); 
+        scanf("%d", &opc);
+        if(opc == 1){
+            scanf("\n%[^\n]s", msg);
+            send(sock , msg , strlen(msg) , 0 ); 
+        }        
+        else{
+            valread = read(sock ,tmp, 1024);
+            tmp[valread] = '\0';
+            printf("%s\n",tmp );
+        }
+        
     }
     return 0; 
 } 
