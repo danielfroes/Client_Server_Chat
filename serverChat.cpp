@@ -14,12 +14,14 @@
 #define TRUE 1 
 #define FALSE 0 
 #define PORT 8080
+
+#define MAX_USERS_NUMBER 2
 	
 int main(int argc , char *argv[]) 
 { 
 	int opt = TRUE; 
-	int master_socket , addrlen , new_socket , client_socket[2] , 
-		max_clients = 2 , activity, i , valread , sd; 
+	int master_socket , addrlen , new_socket , client_socket[MAX_USERS_NUMBER] , 
+		max_clients = MAX_USERS_NUMBER , activity, i , valread , sd; 
 	int max_sd; 
 	struct sockaddr_in address; 
 		
