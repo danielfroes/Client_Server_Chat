@@ -1,3 +1,6 @@
+// Daniel Froés - 10255956
+// Luana Balador Belisário - 10692245
+// Pedro Henrique Nieuwenhoff - 10377729
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <string.h>
@@ -96,7 +99,8 @@ int main(int argc, char const *argv[]) {
     int clientSock = CreateSocket();
     ConnectToServer(clientSock);
 
-    // design, msg de boas vindas do chat etc
+    // design, msg de boas vindas do chat
+    // escolher nome de usuário etc
     printf("Digite um nome de usuário para entrar no chat: ");
     std::cin >> userName;
     std::cout

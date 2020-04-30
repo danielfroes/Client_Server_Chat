@@ -1,3 +1,6 @@
+// Daniel Froés - 10255956
+// Luana Balador Belisário - 10692245
+// Pedro Henrique Nieuwenhoff - 10377729
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
