@@ -43,7 +43,8 @@ void SendMessage(std::string userName, int sock) {
 
     while (true) {
         std::getline(std::cin, msg);
-
+        
+        //disconnect from the server and closes the application
         if(msg == "/quit")
         {
             std::cout << "Até Logo! ^^" << std::endl;
@@ -120,6 +121,8 @@ int main(int argc, char const *argv[]) {
 
     std::string option;
 
+
+    //only connects to server if the user types the right command
     while(option != "/connect")
     {
         std::cout << "Para conectar ao chat, digite \"/connect\"!" << std::endl;
@@ -131,8 +134,8 @@ int main(int argc, char const *argv[]) {
     // escolher nome de usuário etc
     
     std::cout
-        << "\n\n Bem vindo ao chat, " << userName
-        << "\n Para enviar sua mensagem basta digitar e apertar Enter\n\n";
+        << "\nBem vindo ao chat, " << userName
+        << "\nPara enviar sua mensagem basta digitar e apertar Enter\n\n";
 
     // definição execução das threads de envio e recebimento
     // de mensagens entre os clients e o server
