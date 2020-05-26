@@ -13,6 +13,13 @@
 #define PORT 8080
 #define MAX_MSG_LENGTH 2048
 #define USERNAME_LENGTH 25
+ 
+//** To do Cliente
+
+
+
+//** TODO extra
+// - fazer com que o scanf n seja printado no terminal
 
 // func readMessage: Lê uma mensagem que foi enviada para o cliente
 // @param: socket do cliente
@@ -36,14 +43,20 @@ void SendMessage(std::string userName, int sock) {
 
     while (true) {
         std::getline(std::cin, msg);
-        printf("mas envidada: %s\n", msg.c_str());
+
+        if(msg == "/quit")
+        {
+            std::cout << "Até Logo! ^^" << std::endl;
+            exit(0);
+        }
 
         // faz o tratamento do tamanho da msg recebida pelo client e enviada
         // por esse. Caso a msg tenha mais que 2048 caracteres, ela é dividida
         // em mais de uma automaticamente
         for (int offset = 0; offset < msg.length(); offset += MAX_MSG_LENGTH) {
             msgAux = msg.substr(offset, MAX_MSG_LENGTH);
-            msgDest = userName + ": " + msgAux + "\n";
+            // msgDest = userName + ": " + msgAux + "\n";
+            msgDest = msgAux + "\n";
             send(sock, msgDest.c_str(), msgDest.length(), 0);
         }
     }
@@ -66,7 +79,7 @@ int CreateSocket() {
 // func ConnectToServer: conecta o novo client ao IP do
 // server que está atualmente rodando na rede
 // @param: socket do client
-void ConnectToServer(int clientSock) {
+void ConnectToServer(int clientSock, std::string userName) {
     int valread;
     char welcomeMsg[1000] = {0};
     struct sockaddr_in serv_addr;
@@ -87,22 +100,36 @@ void ConnectToServer(int clientSock) {
         printf("\nConnection Failed \n");
         exit(-1);
     }
-
+    send(clientSock, userName.c_str(), userName.length(), 0);
+    
     valread = read(clientSock, welcomeMsg, 1000);
     printf("%s\n", welcomeMsg);
+
+
+    
+
 }
 
 int main(int argc, char const *argv[]) {
     std::string userName;
-
-    // criando a socket do cliente
-    int clientSock = CreateSocket();
-    ConnectToServer(clientSock);
-
-    // design, msg de boas vindas do chat
-    // escolher nome de usuário etc
+    
     printf("Digite um nome de usuário para entrar no chat: ");
     std::cin >> userName;
+    // criando a socket do cliente
+    int clientSock = CreateSocket();
+
+    std::string option;
+
+    while(option != "/connect")
+    {
+        std::cout << "Para conectar ao chat, digite \"/connect\"!" << std::endl;
+        std::cin >> option;
+    }
+
+    ConnectToServer(clientSock, userName);
+    // design, msg de boas vindas do chat
+    // escolher nome de usuário etc
+    
     std::cout
         << "\n\n Bem vindo ao chat, " << userName
         << "\n Para enviar sua mensagem basta digitar e apertar Enter\n\n";
