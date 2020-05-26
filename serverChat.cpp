@@ -12,21 +12,53 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <iostream>
+
 #define TRUE 1
 #define FALSE 0
 #define PORT 8080
 
-#define MAX_USERS_NUMBER 2
+#define MAX_USERS_NUMBER 100
 #define MAX_MSG_LENGTH 2048
+
+
+//** To do Servidor
+// - Servidor detectar os cliente que não estão recebendo mensagem e apos 5 tentativas, desconectar o cliente
+
+typedef struct _client
+{
+    int socket;
+    char username[MAX_MSG_LENGTH];
+} client;
+
+void InitServer()
+{
+    
+}
+
+void DisconnectClient( client* clientArray, int pos, struct sockaddr_in address, int addrlen)
+{
+    getpeername(clientArray[pos].socket, (struct sockaddr *)&address, (socklen_t *)&addrlen);
+    printf("Host disconnected , ip %s , port %d \n",
+    inet_ntoa(address.sin_addr),
+    ntohs(address.sin_port));
+
+    // Close the socket and mark as 0 in list for reuse
+    close(clientArray[pos].socket);
+    clientArray[pos].socket = 0;
+}
+
+
 
 int main(int argc, char *argv[]) {
     int opt = TRUE;
-    int master_socket, addrlen, new_socket, client_socket[MAX_USERS_NUMBER],
-        max_clients = MAX_USERS_NUMBER, activity, i, valread, sd;
-    int max_sd;
+    int master_socket, addrlen,  max_clients = MAX_USERS_NUMBER, activity, i, valread, max_sd,  cnt_errors = 0;
+    
+    client client_socket[MAX_USERS_NUMBER], new_client, sd;
+
     struct sockaddr_in address;
 
-    char buffer[MAX_MSG_LENGTH];  // data buffer of 1K
+    char buffer[MAX_MSG_LENGTH], auxStr[MAX_MSG_LENGTH];  // data buffer of 1K
 
     // set of socket descriptors
     fd_set readfds;
@@ -34,9 +66,14 @@ int main(int argc, char *argv[]) {
     // a message
     char message[] = "ECHO Daemon v1.0 \r\n";
 
+
+
+
+
     // initialise all client_socket[] to 0 so not checked
     for (i = 0; i < max_clients; i++) {
-        client_socket[i] = 0;
+        client_socket[i].socket = 0;
+        // client_socket[i].username;
     }
 
     // create a master socket
@@ -86,13 +123,13 @@ int main(int argc, char *argv[]) {
         // add child sockets to set
         for (i = 0; i < max_clients; i++) {
             // socket descriptor
-            sd = client_socket[i];
+            sd.socket = client_socket[i].socket;
 
             // if valid socket descriptor then add to read list
-            if (sd > 0) FD_SET(sd, &readfds);
+            if (sd.socket > 0) FD_SET(sd.socket, &readfds);
 
             // highest file descriptor number, need it for the select function
-            if (sd > max_sd) max_sd = sd;
+            if (sd.socket > max_sd) max_sd = sd.socket;
         }
 
         // wait for an activity on one of the sockets , timeout is NULL ,
@@ -108,7 +145,7 @@ int main(int argc, char *argv[]) {
         if (FD_ISSET(master_socket,
                      &readfds))  // checa se aconteceu alguma no master socket
         {
-            if ((new_socket = accept(master_socket, (struct sockaddr *)&address,
+            if ((new_client.socket = accept(master_socket, (struct sockaddr *)&address,
                                      (socklen_t *)&addrlen)) < 0) {
                 perror("accept");
                 exit(EXIT_FAILURE);
@@ -117,12 +154,20 @@ int main(int argc, char *argv[]) {
             // inform user of socket number - used in send and receive commands
             printf(
                 "New connection , socket fd is %d , ip is : %s , port : %d\n",
-                new_socket, inet_ntoa(address.sin_addr),
+                new_client.socket, inet_ntoa(address.sin_addr),
                 ntohs(address.sin_port));
 
+
+
+            valread = read(new_client.socket, buffer, MAX_MSG_LENGTH);
+            buffer[valread] = '\0';
+            strcpy(new_client.username, buffer);
+            
+
+           
+
             // send new connection greeting message
-            if (send(new_socket, message, strlen(message), 0) !=
-                strlen(message)) {
+            if (send(new_client.socket, message, strlen(message), 0) != strlen(message)) {
                 perror("send");
             }
 
@@ -131,8 +176,9 @@ int main(int argc, char *argv[]) {
             // add new socket to array of sockets
             for (i = 0; i < max_clients; i++) {
                 // if position is empty
-                if (client_socket[i] == 0) {
-                    client_socket[i] = new_socket;
+                if (client_socket[i].socket == 0) {
+                    client_socket[i].socket = new_client.socket;
+                    strcpy(client_socket[i].username, new_client.username);
                     printf("Adding to list of sockets as %d\n", i);
 
                     break;
@@ -144,20 +190,21 @@ int main(int argc, char *argv[]) {
         for (i = 0; i < max_clients; i++) {
             sd = client_socket[i];
 
-            if (FD_ISSET(sd, &readfds)) {
+            if (FD_ISSET(sd.socket, &readfds)) {
                 // Check if it was for closing, and also read the
                 // incoming message
-                if ((valread = read(sd, buffer, MAX_MSG_LENGTH)) == 0) {
-                    // Somebody disconnected , get his details and print
-                    getpeername(sd, (struct sockaddr *)&address,
-                                (socklen_t *)&addrlen);
-                    printf("Host disconnected , ip %s , port %d \n",
-                           inet_ntoa(address.sin_addr),
-                           ntohs(address.sin_port));
+                if ((valread = read(sd.socket, buffer, MAX_MSG_LENGTH)) == 0) {
+                    // // Somebody disconnected , get his details and print
+                    // getpeername(sd.socket, (struct sockaddr *)&address,
+                    //             (socklen_t *)&addrlen);
+                    // printf("Host disconnected , ip %s , port %d \n",
+                    //        inet_ntoa(address.sin_addr),
+                    //        ntohs(address.sin_port));
 
-                    // Close the socket and mark as 0 in list for reuse
-                    close(sd);
-                    client_socket[i] = 0;
+                    // // Close the socket and mark as 0 in list for reuse
+                    // close(sd.socket);
+                    // client_socket[i].socket = 0;
+                    DisconnectClient(client_socket, i, address, addrlen);
                 }
 
                 // Echo back the message that came in to other clients
@@ -165,16 +212,50 @@ int main(int argc, char *argv[]) {
                     // set the string terminating NULL byte on the end
                     // of the data read
                     buffer[valread] = '\0';
+                
+                    if(strcmp(buffer, "/ping\n") == 0)
+                    {
+                        strcpy(buffer, "pong\n");
+                        std::cout << buffer << std::endl;
+                        send(sd.socket, buffer, strlen(buffer), 0);    
+                    }
+                    else
+                    {   
+                        for (int j = 0; j < max_clients; j++)
+                        {   
+                            if(client_socket[j].socket != 0)
+                            {
+                                
+                                strcpy(auxStr, sd.username); 
+                                strcat(auxStr, ": ");
+                                strcat(auxStr, buffer);
 
-                    for (int j = 0; j < max_clients; j++) {
-                        if (client_socket[j] == sd) continue;
+                                //aqui
+                                if(send(client_socket[j].socket, auxStr, strlen(auxStr), 0) != strlen(auxStr))
+                                {   
+                                    j--;
+                                    cnt_errors++;
+                                    std::cout << "contador de erro: " << cnt_errors << std::endl;
+                                }
+                                else{
+                                    cnt_errors = 0;
 
-                        send(client_socket[j], buffer, strlen(buffer), 0);
+                                    std::cout << "contador de resetado" << std::endl;
+                                }
+                                if(cnt_errors == 5)
+                                {
+                                    DisconnectClient(client_socket, j, address, addrlen);
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
+
+
+
 
     return 0;
 }
