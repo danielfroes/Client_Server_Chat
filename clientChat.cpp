@@ -36,7 +36,6 @@ void SendMessage(std::string userName, int sock) {
 
     while (true) {
         std::getline(std::cin, msg);
-        printf("mas envidada: %s\n", msg.c_str());
 
         // faz o tratamento do tamanho da msg recebida pelo client e enviada
         // por esse. Caso a msg tenha mais que 2048 caracteres, ela é dividida
