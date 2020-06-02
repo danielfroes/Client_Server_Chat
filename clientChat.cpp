@@ -9,17 +9,67 @@
 #include <iostream>
 #include <list>
 #include <thread>
+#include <signal.h> 
 
 #define PORT 8080
 #define MAX_MSG_LENGTH 2048
 #define USERNAME_LENGTH 25
  
 //** To do Cliente
+void ReadMessage(int sock);
+void SendMessage(std::string userName, int sock);
+int CreateSocket();
+void ConnectToServer(int clientSock, std::string userName);
+void sigintHandler(int sig_num) ;
+
+
+int main(int argc, char const *argv[]) {
+
+
+    
+    /* Set the SIGINT (Ctrl-C) signal handler to sigintHandler  
+       Refer http://en.cppreference.com/w/c/program/signal */
+    signal(SIGINT, sigintHandler); 
+
+    std::string userName;
+    
+    printf("Digite um nome de usuário para entrar no chat: ");
+    std::cin >> userName;
+    // criando a socket do cliente
+    int clientSock = CreateSocket();
+
+    std::string option;
+
+
+    //only connects to server if the user types the right command
+    while(option != "/connect")
+    {
+        std::cout << "Para conectar ao chat, digite \"/connect\"!" << std::endl;
+        std::cin >> option;
+    }
+
+    ConnectToServer(clientSock, userName);
+    // design, msg de boas vindas do chat
+    // escolher nome de usuário etc
+    
+    std::cout
+        << "\nBem vindo ao chat, " << userName
+        << "\nPara enviar sua mensagem basta digitar e apertar Enter\n\n";
+
+    // definição execução das threads de envio e recebimento
+    // de mensagens entre os clients e o server
+    std::thread readThread(ReadMessage, clientSock);
+
+    std::thread sendThread(SendMessage, userName, clientSock);
+
+    readThread.join();
+    sendThread.join();
+
+    return 0;
+}
 
 
 
-//** TODO extra
-// - fazer com que o scanf n seja printado no terminal
 
 // func readMessage: Lê uma mensagem que foi enviada para o cliente
 // @param: socket do cliente
@@ -44,8 +94,8 @@ void SendMessage(std::string userName, int sock) {
     while (true) {
         std::getline(std::cin, msg);
         
-        //disconnect from the server and closes the application
-        if(msg == "/quit")
+        //disconnect from the server and closes the application if /quit ou ctrl-d
+        if(msg == "/quit" || std::cin.eof())
         {
             std::cout << "Até Logo! ^^" << std::endl;
             exit(0);
@@ -105,46 +155,16 @@ void ConnectToServer(int clientSock, std::string userName) {
     
     valread = read(clientSock, welcomeMsg, 1000);
     printf("%s\n", welcomeMsg);
-
-
-    
-
 }
 
-int main(int argc, char const *argv[]) {
-    std::string userName;
-    
-    printf("Digite um nome de usuário para entrar no chat: ");
-    std::cin >> userName;
-    // criando a socket do cliente
-    int clientSock = CreateSocket();
-
-    std::string option;
 
 
-    //only connects to server if the user types the right command
-    while(option != "/connect")
-    {
-        std::cout << "Para conectar ao chat, digite \"/connect\"!" << std::endl;
-        std::cin >> option;
-    }
-
-    ConnectToServer(clientSock, userName);
-    // design, msg de boas vindas do chat
-    // escolher nome de usuário etc
-    
-    std::cout
-        << "\nBem vindo ao chat, " << userName
-        << "\nPara enviar sua mensagem basta digitar e apertar Enter\n\n";
-
-    // definição execução das threads de envio e recebimento
-    // de mensagens entre os clients e o server
-    std::thread readThread(ReadMessage, clientSock);
-
-    std::thread sendThread(SendMessage, userName, clientSock);
-
-    readThread.join();
-    sendThread.join();
-
-    return 0;
-}
+/* Signal Handler for SIGINT */
+void sigintHandler(int sig_num) 
+{ 
+    /* Reset handler to catch SIGINT next time. 
+       Refer http://en.cppreference.com/w/c/program/signal */
+    signal(SIGINT, sigintHandler); 
+    printf("\n Cannot be terminated using Ctrl+C \n"); 
+    fflush(stdout); 
+} 
