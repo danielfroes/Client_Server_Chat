@@ -18,12 +18,13 @@
 
 //** To do Cliente
 void ChangeNickname(std::string *nickname);
+bool CheckChannelName(std::string channelName);
 void ReadMessage(int sock);
 void SendMessage(std::string nickname, int sock);
 int CreateSocket();
-void ConnectToServer(int clientSock, std::string nickname, std::string channel);
+void ConnectToServer(int clientSock, std::string nickname);
 void sigintHandler(int sig_num) ;
-
+void ForceToJoinChannel(int sock);
 
 
 int main(int argc, char const *argv[]) {
@@ -32,87 +33,31 @@ int main(int argc, char const *argv[]) {
 
     /* Set the SIGINT (Ctrl-C) signal handler to sigintHandler
        Refer http://en.cppreference.com/w/c/program/signal */
-    signal(SIGINT, sigintHandler);
+    // signal(SIGINT, sigintHandler);
     std::string option;
     std::string nickname;
 
 
     // criando a socket do cliente
     int clientSock = CreateSocket();
-    while(option != "/nickname")
-    {
-        std::cout << "Para criar um apelido, digite \"/nickname\"!" << std::endl;
-        std::cin >> option;
-    }
+    // while(option != "/nickname")
+    // {
+    //     std::cout << "Para criar um apelido, digite \"/nickname\"!" << std::endl;
+    //     std::cin >> option;
+    // }
     ChangeNickname(&nickname);
 
     std::cout << nickname << std::endl;
 
-    //only connects to server if the user types the right command
-    while(option != "/connect")
-    {
-        std::cout << "Para conectar ao chat, digite \"/connect\"!" << std::endl;
-        std::cin >> option;
-    }
-
-
-    std::string channelName;
-    while (option.substr(0, 6) != "/join ")
-    {
-        std::cout << "Para entrar em um canal use o comando \"/join nome_do_canal\" \n";
-        std::getline(std::cin, option);
-        std::cout << "Substring: " << option.substr(0, 6) << "*" << std::endl;
-
-        if(option.substr(0, 6) == "/join ")
-        {
-            printf("teste\n");
-            channelName = option.substr(6, option.length()-6);
-            char controlGChar[2];
-            controlGChar[0] = 7;
-
-            if(option.length() == 6)
-            {
-                std::cout << "É necessário especificar um nome para o canal que deseja entrar. Tente novamente" << std::endl;
-                option = "";
-                continue;
-            }
-
-            else if(channelName[0] != '#' && channelName[0] != '&')
-            {
-                std::cout << "O nome do canal deve ser iniciado por \"#\" ou \"&\"" << std::endl;
-                option = "";
-                continue;
-            }
-
-            else if(channelName.find(",") != std::string::npos)
-            {
-                std::cout << "O nome do canal não pode conter \",\"" << std::endl;
-                option = "";
-                continue;
-            }
-
-            else if(channelName.find(controlGChar) != std::string::npos)
-            {
-                std::cout << "O nome do canal não pode conter \"^G\"" << std::endl;
-                option = "";
-                continue;
-            }
-        }
-    }
-
-    printf("final da leitura do channel\n");
-
-    ConnectToServer(clientSock, nickname, channelName);
-    // design, msg de boas vindas do chat
-    // escolher nome de usuário etc
-
-    std::cout << "\nBem vindo ao chat, " << nickname << std::endl;
-
-    //JoinChannel();
-
-
-
-
+    // //only connects to server if the user types the right command
+    // while(option != "/connect")
+    // {
+    //     std::cout << "Para conectar ao chat, digite \"/connect\"!" << std::endl;
+    //     std::cin >> option;
+    // }
+    ConnectToServer(clientSock, nickname);
+    std::cin.ignore();
+    
     // definição execução das threads de envio e recebimento
     // de mensagens entre os clients e o server
     std::thread readThread(ReadMessage, clientSock);
@@ -123,6 +68,81 @@ int main(int argc, char const *argv[]) {
     sendThread.join();
 
     return 0;
+}
+
+
+// func readMessage: Lê uma mensagem que foi enviada para o cliente
+// @param: socket do cliente
+void SendMessage(std::string nickname, int sock) {
+    std::string msg;
+    std::string msgAux;
+    std::string msgDest;
+
+    bool isInChannel = false;
+
+    while (true) {
+
+        if(!isInChannel)
+        {
+            ForceToJoinChannel(sock);
+            isInChannel = true;
+        }
+        else
+        {
+            std::getline(std::cin, msg);
+
+            //disconnect from the server and closes the application if /quit ou ctrl-d
+            if(msg == "/quit" || std::cin.eof())
+            {
+                std::cout << "Até Logo! ^^" << std::endl;
+                exit(0);
+            }
+
+            // faz o tratamento do tamanho da msg recebida pelo client e enviada
+            // por esse. Caso a msg tenha mais que 2048 caracteres, ela é dividida
+            // em mais de uma automaticamente
+            for (int offset = 0; offset < msg.length(); offset += MAX_MSG_LENGTH) {
+                msgAux = msg.substr(offset, MAX_MSG_LENGTH);
+                // msgDest = nickname + ": " + msgAux + "\n";
+                msgDest = msgAux + "\n";
+                send(sock, msgDest.c_str(), msgDest.length(), 0);
+            }
+        }
+    }
+}
+
+void ForceToJoinChannel(int sock)
+{
+    std::string option;
+    std::string channelName;
+    
+    while (option.substr(0, 6) != "/join ")
+    {
+        std::cout << "Para entrar em um canal use o comando \"/join nome_do_canal\" \n";
+        std::getline(std::cin, option);
+        
+
+        if(option.substr(0, 6) == "/join ")
+        {
+            channelName = option.substr(6, option.length()-6);
+            
+            if(option.length() == 6)
+            {
+                std::cout << "É necessário especificar um nome para o canal que deseja entrar. Tente novamente" << std::endl;
+                option = "";
+                continue;
+            }
+
+            if(!CheckChannelName(channelName))
+            {
+                option = "";
+                continue;
+            }
+            
+        }
+    }
+    //Mandando o comando \join  inteiro para o servidor
+    send(sock, option.c_str(), option.length(), 0);
 }
 
 void ChangeNickname(std::string *nickname)
@@ -136,7 +156,40 @@ void ChangeNickname(std::string *nickname)
     }
 }
 
+bool CheckChannelName(std::string channelName)
+{
 
+    char controlGChar[2];
+    controlGChar[0] = 7;
+
+    bool isValid = true;
+
+    if(channelName[0] != '#' && channelName[0] != '&')
+    {
+        std::cout << "O nome do canal deve ser iniciado por \"#\" ou \"&\"." << std::endl;
+        isValid = false;
+    }
+
+    if(channelName.find(",") != std::string::npos)
+    {
+        std::cout << "O nome do canal não pode conter \",\"." << std::endl;
+        isValid = false;
+    }
+
+    if(channelName.find(controlGChar) != std::string::npos)
+    {
+        std::cout << "O nome do canal não pode conter \"^G\"." << std::endl;
+        isValid = false;
+    }
+    
+    if(channelName.length() > MAX_CHANNELNAME_LENGTH)
+    {
+        std::cout << "O nome do canal deve conter menos de " << MAX_CHANNELNAME_LENGTH << "characters."<< std::endl;
+        isValid = false;
+    }
+
+    return isValid;
+}
 void JoinChannel()
 {
     std::string channelName;
@@ -160,34 +213,7 @@ void ReadMessage(int sock) {
     }
 }
 
-// func readMessage: Lê uma mensagem que foi enviada para o cliente
-// @param: socket do cliente
-void SendMessage(std::string nickname, int sock) {
-    std::string msg;
-    std::string msgAux;
-    std::string msgDest;
 
-    while (true) {
-        std::getline(std::cin, msg);
-
-        //disconnect from the server and closes the application if /quit ou ctrl-d
-        if(msg == "/quit" || std::cin.eof())
-        {
-            std::cout << "Até Logo! ^^" << std::endl;
-            exit(0);
-        }
-
-        // faz o tratamento do tamanho da msg recebida pelo client e enviada
-        // por esse. Caso a msg tenha mais que 2048 caracteres, ela é dividida
-        // em mais de uma automaticamente
-        for (int offset = 0; offset < msg.length(); offset += MAX_MSG_LENGTH) {
-            msgAux = msg.substr(offset, MAX_MSG_LENGTH);
-            // msgDest = nickname + ": " + msgAux + "\n";
-            msgDest = msgAux + "\n";
-            send(sock, msgDest.c_str(), msgDest.length(), 0);
-        }
-    }
-}
 
 // func CreateSocket: Tenta criar um novo socket
 // em caso de sucesso, retorna o socket criado
@@ -206,7 +232,7 @@ int CreateSocket() {
 // func ConnectToServer: conecta o novo client ao IP do
 // server que está atualmente rodando na rede
 // @param: socket do client
-void ConnectToServer(int clientSock, std::string nickname, std::string channel) {
+void ConnectToServer(int clientSock, std::string nickname) {
     int valread;
     char welcomeMsg[1000] = {0};
     struct sockaddr_in serv_addr;
@@ -228,7 +254,6 @@ void ConnectToServer(int clientSock, std::string nickname, std::string channel) 
     }
     // Manda as requisições
     send(clientSock, nickname.c_str(), nickname.length(), 0);
-    send(clientSock, nickname.c_str(), channel.length(), 0);
 
     valread = read(clientSock, welcomeMsg, 1000);
     printf("%s\n", welcomeMsg);

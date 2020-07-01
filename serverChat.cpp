@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <iostream>
+#include <map>
 
 #define TRUE 1
 #define FALSE 0
@@ -48,13 +49,14 @@ int main(int argc, char *argv[])
     int sendToClientErrorsCnt = 0;
     unsigned long addrlen;
     struct sockaddr_in address;
-
-    // array canais?
+    std::map<std::string, client> channels;
+    
 
     client clientArray[MAX_USERS_NUMBER], cli;
     int serverSocket;
 
     char buffer[MAX_MSG_LENGTH], auxStr[MAX_MSG_LENGTH]; // data buffer of 1K
+    
     // set of socket descriptors
     fd_set readfds;
 
@@ -90,7 +92,7 @@ int main(int argc, char *argv[])
         for (int i = 0; i < maxClients; i++)
         {
             cli = clientArray[i];
-
+           
             if (CheckClientRequest(clientArray[i], &readfds))
             {
                 // Check if it was for closing, and also read the
@@ -104,42 +106,63 @@ int main(int argc, char *argv[])
                 {
                     //for some reason when the message is read, the string doesn't come with the terminator by default;
                     buffer[valread] = '\0';
+                    std::string strBuffer = {buffer};
 
-                    //when the clients send a message with "/ping" the server send a message "/pong" back to the client
-                    if (strcmp(buffer, "/ping\n") == 0)
+                    if(strBuffer.substr(0,6) == "/join ")
                     {
-                        strcpy(buffer, "pong\n");
-                        send(cli.socket, buffer, strlen(buffer), 0);
-                    }
-                    else
-                    {
-                        for (int j = 0; j < maxClients; j++)
+                        std::string channelName =  strBuffer.substr(6, strBuffer.length() - 6);
+                        std::cout << channelName <<std::endl;
+                        
+
+                        if(channels.find(channelName) == channels.end())
                         {
-                            //send the message to all clients, that way creating the chat
-                            if (clientArray[j].socket != 0)
-                            {
-                                strcpy(auxStr, cli.username);
-                                strcat(auxStr, ": ");
-                                strcat(auxStr, buffer);
-                                //if send the message to client fails 5 times, disconnect client from server.
-                                if (send(clientArray[j].socket, auxStr, strlen(auxStr), 0) != strlen(auxStr))
-                                {
-                                    j--;
-                                    sendToClientErrorsCnt++;
-                                    std::cout << "contador de erro: " << sendToClientErrorsCnt << std::endl;
-                                    if (sendToClientErrorsCnt == 5)
-                                    {
-                                        DisconnectClient(clientArray, j, address, addrlen);
-                                    }
-                                }
-                                else
-                                {
-                                    sendToClientErrorsCnt = 0;
-                                    std::cout << "contador de resetado" << std::endl;
-                                }
-                            }
+                            printf("não encontrou nada");
                         }
+                        else
+                        {
+                            printf("dur\n");
+                        }
+                        
+                        //procurar se ja existia o canal e se sim conectar a ele
+                        //se não existir criar um novo canal
                     }
+                    //when the clients send a message with "/ping" the server send a message "/pong" back to the client
+                    
+                    // if (strcmp(buffer, "/ping\n") == 0)
+                    // {
+                    //     strcpy(buffer, "pong\n");
+                    //     send(cli.socket, buffer, strlen(buffer), 0);
+                    // }
+                    
+                    // else
+                    // {
+                    //     for (int j = 0; j < maxClients; j++)
+                    //     {
+                    //         //send the message to all clients, that way creating the chat
+                    //         if (clientArray[j].socket != 0)
+                    //         {
+                    //             strcpy(auxStr, cli.username);
+                    //             strcat(auxStr, ": ");
+                    //             strcat(auxStr, buffer);
+                    //             //if send the message to client fails 5 times, disconnect client from server.
+                    //             if (send(clientArray[j].socket, auxStr, strlen(auxStr), 0) != strlen(auxStr))
+                    //             {
+                    //                 j--;
+                    //                 sendToClientErrorsCnt++;
+                    //                 std::cout << "contador de erro: " << sendToClientErrorsCnt << std::endl;
+                    //                 if (sendToClientErrorsCnt == 5)
+                    //                 {
+                    //                     DisconnectClient(clientArray, j, address, addrlen);
+                    //                 }
+                    //             }
+                    //             else
+                    //             {
+                    //                 sendToClientErrorsCnt = 0;
+                    //                 std::cout << "contador de resetado" << std::endl;
+                    //             }
+                    //         }
+                    //     }
+                    // }
                 }
             }
         }
@@ -247,8 +270,7 @@ void ConnectWithClient(client *clientArray, int maxClients, int *serverSocket, s
     char buffer[MAX_MSG_LENGTH];
     char message[] = "ECHO Daemon v1.0 \r\n";
 
-    if ((new_client.socket = accept(*serverSocket, (struct sockaddr *)&address,
-                                    (socklen_t *)&addrlen)) < 0)
+    if ((new_client.socket = accept(*serverSocket, (struct sockaddr *)&address,(socklen_t *)&addrlen)) < 0)
     {
         perror("accept");
         exit(EXIT_FAILURE);
@@ -263,13 +285,6 @@ void ConnectWithClient(client *clientArray, int maxClients, int *serverSocket, s
     int valread = read(new_client.socket, buffer, MAX_MSG_LENGTH);
     buffer[valread] = '\0';
     strcpy(new_client.username, buffer);
-
-    // Canal do novo client
-    valread = read(new_client.socket, buffer, MAX_CHANNELNAME_LENGTH);
-    buffer[valread] = '\0';
-    strcpy(new_client.channel, buffer);
-
-    printf("O nome do canal é: %s\n", new_client.channel);
 
     // send new connection greeting message
     if (send(new_client.socket, message, strlen(message), 0) != strlen(message))
@@ -287,11 +302,12 @@ void ConnectWithClient(client *clientArray, int maxClients, int *serverSocket, s
         {
             clientArray[i].socket = new_client.socket;
             strcpy(clientArray[i].username, new_client.username);
-            strcpy(clientArray[i].channel, new_client.channel);
             printf("Adding to list of sockets as %d\n", i);
             break;
         }
     }
+
+    
 }
 
 bool CheckClientRequest(client cli, fd_set *readfds)
