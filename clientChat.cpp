@@ -9,18 +9,19 @@
 #include <iostream>
 #include <list>
 #include <thread>
-#include <signal.h> 
+#include <signal.h>
 
 #define PORT 8080
 #define MAX_MSG_LENGTH 2048
 #define MAX_NICKNAME_LENGTH 50
- 
+#define MAX_CHANNELNAME_LENGTH 200
+
 //** To do Cliente
 void ChangeNickname(std::string *nickname);
 void ReadMessage(int sock);
 void SendMessage(std::string nickname, int sock);
 int CreateSocket();
-void ConnectToServer(int clientSock, std::string nickname);
+void ConnectToServer(int clientSock, std::string nickname, std::string channel);
 void sigintHandler(int sig_num) ;
 
 
@@ -28,23 +29,23 @@ void sigintHandler(int sig_num) ;
 int main(int argc, char const *argv[]) {
 
 
-    
-    /* Set the SIGINT (Ctrl-C) signal handler to sigintHandler  
+
+    /* Set the SIGINT (Ctrl-C) signal handler to sigintHandler
        Refer http://en.cppreference.com/w/c/program/signal */
-    signal(SIGINT, sigintHandler); 
+    signal(SIGINT, sigintHandler);
     std::string option;
     std::string nickname;
-    
-    
+
+
     // criando a socket do cliente
     int clientSock = CreateSocket();
     while(option != "/nickname")
     {
         std::cout << "Para criar um apelido, digite \"/nickname\"!" << std::endl;
         std::cin >> option;
-    }   
+    }
     ChangeNickname(&nickname);
-    
+
     std::cout << nickname << std::endl;
 
     //only connects to server if the user types the right command
@@ -54,22 +55,21 @@ int main(int argc, char const *argv[]) {
         std::cin >> option;
     }
 
-    ConnectToServer(clientSock, nickname);
-    // design, msg de boas vindas do chat
-    // escolher nome de usuário etc
 
-
-
-    std::cout << "\nBem vindo ao chat, " << nickname << std::endl;
-
-    
+    std::string channelName;
     while (option.substr(0, 6) != "/join ")
     {
-        std::cout << "Para entrar em um canal use o comando \"/join nome_do_canal\" \n\n";
+        std::cout << "Para entrar em um canal use o comando \"/join nome_do_canal\" \n";
         std::cin >> option;
+        std::cout << "Substring: " << option.substr(0, 6) << std::endl;
 
         if(option.substr(0, 6) == "/join ")
         {
+            printf("teste\n");
+            channelName = option.substr(6, option.length()-6);
+            char controlGChar[2];
+            controlGChar[0] = 7;
+
             if(option.length() == 6)
             {
                 std::cout << "É necessário especificar um nome para o canal que deseja entrar. Tente novamente" << std::endl;
@@ -77,30 +77,41 @@ int main(int argc, char const *argv[]) {
                 continue;
             }
 
-            std::string channelName = option.substr(6, option.length()-6);
-            char controlGChar[2];
-            controlGChar[0] = 7; 
-            if(channelName[0] != '#' && channelName[0] != '&')
+            else if(channelName[0] != '#' && channelName[0] != '&')
             {
-                
+                std::cout << "O nome do canal deve ser iniciado por \"#\" ou \"&\"" << std::endl;
+                option = "";
+                continue;
             }
 
-            if(channelName.find(",") != std::string::npos)
+            else if(channelName.find(",") != std::string::npos)
             {
-
+                std::cout << "O nome do canal não pode conter \",\"" << std::endl;
+                option = "";
+                continue;
             }
 
-            if(channelName.find(controlGChar) != std::string::npos)
+            else if(channelName.find(controlGChar) != std::string::npos)
             {
-
+                std::cout << "O nome do canal não pode conter \"^G\"" << std::endl;
+                option = "";
+                continue;
             }
+
+            else break;
         }
-        
-    }
-    
-    JoinChannel();
 
-    
+    }
+
+    ConnectToServer(clientSock, nickname, channelName);
+    // design, msg de boas vindas do chat
+    // escolher nome de usuário etc
+
+    std::cout << "\nBem vindo ao chat, " << nickname << std::endl;
+
+    //JoinChannel();
+
+
 
 
     // definição execução das threads de envio e recebimento
@@ -123,7 +134,7 @@ void ChangeNickname(std::string *nickname)
     {
         printf("\nO apelido digitado é maior que o limite de %d caracteres. Digite novamente um apelido: ", MAX_NICKNAME_LENGTH);
         std::cin >> *nickname;
-    }  
+    }
 }
 
 
@@ -131,7 +142,7 @@ void JoinChannel()
 {
     std::string channelName;
     std::cin >> channelName;
-    
+
     //ler nome do canal
     //Mandar essa requisição para o servidor
 }
@@ -159,7 +170,7 @@ void SendMessage(std::string nickname, int sock) {
 
     while (true) {
         std::getline(std::cin, msg);
-        
+
         //disconnect from the server and closes the application if /quit ou ctrl-d
         if(msg == "/quit" || std::cin.eof())
         {
@@ -196,7 +207,7 @@ int CreateSocket() {
 // func ConnectToServer: conecta o novo client ao IP do
 // server que está atualmente rodando na rede
 // @param: socket do client
-void ConnectToServer(int clientSock, std::string nickname) {
+void ConnectToServer(int clientSock, std::string nickname, std::string channel) {
     int valread;
     char welcomeMsg[1000] = {0};
     struct sockaddr_in serv_addr;
@@ -211,13 +222,15 @@ void ConnectToServer(int clientSock, std::string nickname) {
     }
 
     // procura o servidor e conecta a socket
-    if (connect(clientSock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+    if (connect(clientSock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
         printf("\nConnection Failed \n");
         exit(-1);
     }
+    // Manda as requisições
     send(clientSock, nickname.c_str(), nickname.length(), 0);
-    
+    send(clientSock, nickname.c_str(), channel.length(), 0);
+
     valread = read(clientSock, welcomeMsg, 1000);
     printf("%s\n", welcomeMsg);
 }
@@ -225,11 +238,11 @@ void ConnectToServer(int clientSock, std::string nickname) {
 
 
 /* Signal Handler for SIGINT */
-void sigintHandler(int sig_num) 
-{ 
-    /* Reset handler to catch SIGINT next time. 
+void sigintHandler(int sig_num)
+{
+    /* Reset handler to catch SIGINT next time.
        Refer http://en.cppreference.com/w/c/program/signal */
-    signal(SIGINT, sigintHandler); 
-    printf("\n Cannot be terminated using Ctrl+C \n"); 
-    fflush(stdout); 
-} 
+    signal(SIGINT, sigintHandler);
+    printf("\n Cannot be terminated using Ctrl+C \n");
+    fflush(stdout);
+}

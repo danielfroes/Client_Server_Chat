@@ -259,9 +259,17 @@ void ConnectWithClient(client *clientArray, int maxClients, int *serverSocket, s
         "New connection , socket fd is %d , ip is : %s , port : %d\n",
         new_client.socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 
+    // Username do novo client
     int valread = read(new_client.socket, buffer, MAX_MSG_LENGTH);
     buffer[valread] = '\0';
     strcpy(new_client.username, buffer);
+
+    // Canal do novo client
+    valread = read(new_client.socket, buffer, MAX_CHANNELNAME_LENGTH);
+    buffer[valread] = '\0';
+    strcpy(new_client.channel, buffer);
+
+    printf("O nome do canal é: %s\n", new_client.channel);
 
     // send new connection greeting message
     if (send(new_client.socket, message, strlen(message), 0) != strlen(message))
@@ -279,6 +287,7 @@ void ConnectWithClient(client *clientArray, int maxClients, int *serverSocket, s
         {
             clientArray[i].socket = new_client.socket;
             strcpy(clientArray[i].username, new_client.username);
+            strcpy(clientArray[i].channel, new_client.channel);
             printf("Adding to list of sockets as %d\n", i);
             break;
         }
