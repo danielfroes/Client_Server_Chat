@@ -60,8 +60,8 @@ int main(int argc, char const *argv[]) {
     while (option.substr(0, 6) != "/join ")
     {
         std::cout << "Para entrar em um canal use o comando \"/join nome_do_canal\" \n";
-        std::cin >> option;
-        std::cout << "Substring: " << option.substr(0, 6) << std::endl;
+        std::getline(std::cin, option);
+        std::cout << "Substring: " << option.substr(0, 6) << "*" << std::endl;
 
         if(option.substr(0, 6) == "/join ")
         {
@@ -97,11 +97,10 @@ int main(int argc, char const *argv[]) {
                 option = "";
                 continue;
             }
-
-            else break;
         }
-
     }
+
+    printf("final da leitura do channel\n");
 
     ConnectToServer(clientSock, nickname, channelName);
     // design, msg de boas vindas do chat
