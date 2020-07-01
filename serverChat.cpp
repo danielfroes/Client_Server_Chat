@@ -11,7 +11,6 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-
 #include <iostream>
 
 #define TRUE 1
@@ -20,15 +19,16 @@
 
 #define MAX_USERS_NUMBER 100
 #define MAX_MSG_LENGTH 2048
+#define MAX_CHANNELNAME_LENGTH 200
 
-//** To do Servidor
-// - Servidor detectar os cliente que não estão recebendo mensagem e apos 5 tentativas, desconectar o cliente
 
 typedef struct _client
 {
     int socket;
     char username[MAX_MSG_LENGTH];
+    char channel[200];
 } client;
+
 
 int InitServer(sockaddr_in *address, unsigned long *addrlen);
 void DisconnectClient(client *clientArray, int pos, struct sockaddr_in address, int addrlen);
@@ -38,8 +38,8 @@ void ConnectWithClient(client *clientArray, int maxClients, int *serverSocket, s
 bool CheckClientRequest(client cli, fd_set *readfds);
 
 
-
-
+//** To do Servidor
+// - Servidor detectar os cliente que não estão recebendo mensagem e apos 5 tentativas, desconectar o cliente
 
 int main(int argc, char *argv[])
 {
@@ -48,6 +48,8 @@ int main(int argc, char *argv[])
     int sendToClientErrorsCnt = 0;
     unsigned long addrlen;
     struct sockaddr_in address;
+
+    // array canais?
 
     client clientArray[MAX_USERS_NUMBER], cli;
     int serverSocket;
@@ -106,7 +108,7 @@ int main(int argc, char *argv[])
                     //when the clients send a message with "/ping" the server send a message "/pong" back to the client
                     if (strcmp(buffer, "/ping\n") == 0)
                     {
-                        strcpy(buffer, "/pong\n");
+                        strcpy(buffer, "pong\n");
                         send(cli.socket, buffer, strlen(buffer), 0);
                     }
                     else
@@ -191,45 +193,7 @@ int InitServer(sockaddr_in *address, unsigned long *addrlen)
     return serverSocket;
 }
 
-void DisconnectClient(client *clientArray, int pos, struct sockaddr_in address, int addrlen)
-{
-    getpeername(clientArray[pos].socket, (struct sockaddr *)&address, (socklen_t *)&addrlen);
-    printf("Host disconnected , ip %s , port %d \n",
-           inet_ntoa(address.sin_addr),
-           ntohs(address.sin_port));
 
-    // Close the socket and mark as 0 in list for reuse
-    close(clientArray[pos].socket);
-    clientArray[pos].socket = 0;
-}
-
-int SetSockets(client *clientArray, int maxClients, int *serverSocket, fd_set *readfds)
-{
-    client cli;
-    // clear the socket set
-    FD_ZERO(readfds);
-
-    // add master socket to set
-    FD_SET(*serverSocket, readfds);
-    int lastSocket = *serverSocket;
-
-    // add child sockets to set
-    for (int i = 0; i < maxClients; i++)
-    {
-        // socket descriptor
-        cli.socket = clientArray[i].socket;
-
-        // if valid socket descriptor then add to read list
-        if (cli.socket > 0)
-            FD_SET(cli.socket, readfds);
-
-        // highest file descriptor number, need it for the select function
-        if (cli.socket > lastSocket)
-            lastSocket = cli.socket;
-    }
-
-    return lastSocket;
-}
 
 void DisconnectClient(client *clientArray, int pos, struct sockaddr_in address, int addrlen)
 {

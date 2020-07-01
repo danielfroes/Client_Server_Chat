@@ -1,0 +1,35 @@
+# Client_Server_Chat
+
+
+
+
+• /nickname apelidoDesejado - O cliente passa a ser reconhecido pelo apelido especificado;
+
+    •Ao abrir a aplicação pela primeira vez um usuário deverá definir um apelido por meio do comando nickname, limitando o nome do usuário a 50 caracteres ASCII.
+
+    • Durante o chat, o cliente pode trocar de nickname?
+    
+
+
+• /ping - O servidor retorna "pong"assim que receber a mensagem.
+
+• /join nomeCanal - Entra no canal;
+    • Ao abrir a aplicação, o usuário deverá, por meio do comando join, especificar em qual canal ele
+    quer se conectar. Caso este canal não exista ele deverá ser criado e o primeiro usuário a se conectar se torna o administrador do canal.
+
+    •O nome de um canal deverá seguir as restrições apresentadas no RFC-1459.
+
+    • Só pode entrar se ele tiver um nickname
+    
+    • Channels names are strings (beginning with a '&' or '#' character) of
+    length up to 200 characters.  Apart from the the requirement that the
+    first character being either '&' or '#'; the only restriction on a
+    channel name is that it may not contain any spaces (' '), a control G
+    (^G or ASCII 7), or a comma (',' which is used as a list item
+    separator by the protocol).
+    
+Comandos apenas para administradores de canais:
+• /kick nomeUsurio - Fecha a conexão de um usuário especificado
+• /mute nomeUsurio - Faz com que um usuário não possa enviar mensagens neste canal
+• /unmute nomeUsurio - Retira o mute de um usuário.
+• /whois nomeUsurio - Retorna o endereço IP do usuário apenas para o administrador

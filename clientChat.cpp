@@ -13,14 +13,16 @@
 
 #define PORT 8080
 #define MAX_MSG_LENGTH 2048
-#define USERNAME_LENGTH 25
+#define MAX_NICKNAME_LENGTH 50
  
 //** To do Cliente
+void ChangeNickname(std::string *nickname);
 void ReadMessage(int sock);
-void SendMessage(std::string userName, int sock);
+void SendMessage(std::string nickname, int sock);
 int CreateSocket();
-void ConnectToServer(int clientSock, std::string userName);
+void ConnectToServer(int clientSock, std::string nickname);
 void sigintHandler(int sig_num) ;
+
 
 
 int main(int argc, char const *argv[]) {
@@ -30,16 +32,20 @@ int main(int argc, char const *argv[]) {
     /* Set the SIGINT (Ctrl-C) signal handler to sigintHandler  
        Refer http://en.cppreference.com/w/c/program/signal */
     signal(SIGINT, sigintHandler); 
-
-    std::string userName;
+    std::string option;
+    std::string nickname;
     
-    printf("Digite um nome de usuário para entrar no chat: ");
-    std::cin >> userName;
+    
     // criando a socket do cliente
     int clientSock = CreateSocket();
-
-    std::string option;
-
+    while(option != "/nickname")
+    {
+        std::cout << "Para criar um apelido, digite \"/nickname\"!" << std::endl;
+        std::cin >> option;
+    }   
+    ChangeNickname(&nickname);
+    
+    std::cout << nickname << std::endl;
 
     //only connects to server if the user types the right command
     while(option != "/connect")
@@ -48,19 +54,60 @@ int main(int argc, char const *argv[]) {
         std::cin >> option;
     }
 
-    ConnectToServer(clientSock, userName);
+    ConnectToServer(clientSock, nickname);
     // design, msg de boas vindas do chat
     // escolher nome de usuário etc
+
+
+
+    std::cout << "\nBem vindo ao chat, " << nickname << std::endl;
+
     
-    std::cout
-        << "\nBem vindo ao chat, " << userName
-        << "\nPara enviar sua mensagem basta digitar e apertar Enter\n\n";
+    while (option.substr(0, 6) != "/join ")
+    {
+        std::cout << "Para entrar em um canal use o comando \"/join nome_do_canal\" \n\n";
+        std::cin >> option;
+
+        if(option.substr(0, 6) == "/join ")
+        {
+            if(option.length() == 6)
+            {
+                std::cout << "É necessário especificar um nome para o canal que deseja entrar. Tente novamente" << std::endl;
+                option = "";
+                continue;
+            }
+
+            std::string channelName = option.substr(6, option.length()-6);
+            char controlGChar[2];
+            controlGChar[0] = 7; 
+            if(channelName[0] != '#' && channelName[0] != '&')
+            {
+                
+            }
+
+            if(channelName.find(",") != std::string::npos)
+            {
+
+            }
+
+            if(channelName.find(controlGChar) != std::string::npos)
+            {
+
+            }
+        }
+        
+    }
+    
+    JoinChannel();
+
+    
+
 
     // definição execução das threads de envio e recebimento
     // de mensagens entre os clients e o server
     std::thread readThread(ReadMessage, clientSock);
 
-    std::thread sendThread(SendMessage, userName, clientSock);
+    std::thread sendThread(SendMessage, nickname, clientSock);
 
     readThread.join();
     sendThread.join();
@@ -68,17 +115,36 @@ int main(int argc, char const *argv[]) {
     return 0;
 }
 
+void ChangeNickname(std::string *nickname)
+{
+    printf("Digite um nome de usuário para entrar no chat: ");
+    std::cin >> *nickname;
+    while(nickname->length() > MAX_NICKNAME_LENGTH)
+    {
+        printf("\nO apelido digitado é maior que o limite de %d caracteres. Digite novamente um apelido: ", MAX_NICKNAME_LENGTH);
+        std::cin >> *nickname;
+    }  
+}
 
+
+void JoinChannel()
+{
+    std::string channelName;
+    std::cin >> channelName;
+    
+    //ler nome do canal
+    //Mandar essa requisição para o servidor
+}
 
 
 // func readMessage: Lê uma mensagem que foi enviada para o cliente
 // @param: socket do cliente
 void ReadMessage(int sock) {
-    char buffer[MAX_MSG_LENGTH + USERNAME_LENGTH];
+    char buffer[MAX_MSG_LENGTH + MAX_NICKNAME_LENGTH];
     int msgLength;
 
     while (true) {
-        msgLength = read(sock, buffer, MAX_MSG_LENGTH + USERNAME_LENGTH);
+        msgLength = read(sock, buffer, MAX_MSG_LENGTH + MAX_NICKNAME_LENGTH);
         buffer[msgLength] = '\0';
         printf("%s", buffer);
     }
@@ -86,7 +152,7 @@ void ReadMessage(int sock) {
 
 // func readMessage: Lê uma mensagem que foi enviada para o cliente
 // @param: socket do cliente
-void SendMessage(std::string userName, int sock) {
+void SendMessage(std::string nickname, int sock) {
     std::string msg;
     std::string msgAux;
     std::string msgDest;
@@ -106,7 +172,7 @@ void SendMessage(std::string userName, int sock) {
         // em mais de uma automaticamente
         for (int offset = 0; offset < msg.length(); offset += MAX_MSG_LENGTH) {
             msgAux = msg.substr(offset, MAX_MSG_LENGTH);
-            // msgDest = userName + ": " + msgAux + "\n";
+            // msgDest = nickname + ": " + msgAux + "\n";
             msgDest = msgAux + "\n";
             send(sock, msgDest.c_str(), msgDest.length(), 0);
         }
@@ -130,7 +196,7 @@ int CreateSocket() {
 // func ConnectToServer: conecta o novo client ao IP do
 // server que está atualmente rodando na rede
 // @param: socket do client
-void ConnectToServer(int clientSock, std::string userName) {
+void ConnectToServer(int clientSock, std::string nickname) {
     int valread;
     char welcomeMsg[1000] = {0};
     struct sockaddr_in serv_addr;
@@ -138,20 +204,19 @@ void ConnectToServer(int clientSock, std::string userName) {
     // configurando o endereço do servidor
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <=
-        0)  // Convert IPv4 and IPv6 addresses from text to binary form
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0)  // Convert IPv4 and IPv6 addresses from text to binary form
     {
         printf("\nInvalid address/ Address not supported \n");
         exit(-1);
     }
 
     // procura o servidor e conecta a socket
-    if (connect(clientSock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) <
-        0) {
+    if (connect(clientSock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+    {
         printf("\nConnection Failed \n");
         exit(-1);
     }
-    send(clientSock, userName.c_str(), userName.length(), 0);
+    send(clientSock, nickname.c_str(), nickname.length(), 0);
     
     valread = read(clientSock, welcomeMsg, 1000);
     printf("%s\n", welcomeMsg);
