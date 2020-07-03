@@ -21,14 +21,22 @@
 #define MAX_USERS_NUMBER 100
 #define MAX_MSG_LENGTH 2048
 #define MAX_CHANNELNAME_LENGTH 200
+#define MAX_CHANNELS_NUMBER 10
 
 
 typedef struct _client
 {
     int socket;
     char username[MAX_MSG_LENGTH];
-    char channel[200];
+    std::string currentChannel;
 } client;
+
+typedef struct _channel
+{   
+    std::string channelName;
+    client admin;
+} channel;
+
 
 
 int InitServer(sockaddr_in *address, unsigned long *addrlen);
@@ -37,7 +45,7 @@ int SetSockets(client *clientArray, int maxClients, int *serverSocket, fd_set *r
 bool CheckForConnectionRequest(int *serverSocket, fd_set *readfds);
 void ConnectWithClient(client *clientArray, int maxClients, int *serverSocket, struct sockaddr_in address, int addrlen);
 bool CheckClientRequest(client cli, fd_set *readfds);
-
+void CreateChannel(channel *channelArray, int maxChannel, std::string newChannelName, client newChannelAdmin);
 
 //** To do Servidor
 // - Servidor detectar os cliente que não estão recebendo mensagem e apos 5 tentativas, desconectar o cliente
@@ -45,13 +53,14 @@ bool CheckClientRequest(client cli, fd_set *readfds);
 int main(int argc, char *argv[])
 {
 
-    int  maxClients = MAX_USERS_NUMBER, activity, valread, lastSocket;
+    int  maxClients = MAX_USERS_NUMBER, maxChannels = MAX_CHANNELS_NUMBER, activity, valread, lastSocket;
     int sendToClientErrorsCnt = 0;
     unsigned long addrlen;
     struct sockaddr_in address;
-    std::map<std::string, client> channels;
+    // std::map<std::string, client> channels;
     
-
+    
+    channel channelArray[MAX_CHANNELS_NUMBER];
     client clientArray[MAX_USERS_NUMBER], cli;
     int serverSocket;
 
@@ -67,6 +76,11 @@ int main(int argc, char *argv[])
     {
         clientArray[i].socket = 0;
     }
+    for (int i = 0; i < maxChannels; i++)
+    {
+        channelArray[i].channelName = "";
+    }
+
 
     puts("Waiting for connections ...");
 
@@ -110,65 +124,93 @@ int main(int argc, char *argv[])
 
                     if(strBuffer.substr(0,6) == "/join ")
                     {
-                        std::string channelName =  strBuffer.substr(6, strBuffer.length() - 6);
-                        std::cout << channelName <<std::endl;
+                        //So entra se o cliente não tiver entrando em nenhum canal
+                        if(cli.currentChannel == "")
+                        {
+                            std::string channelName =  strBuffer.substr(6, strBuffer.length() - 6);
                         
+                            bool channelExists = false;
 
-                        if(channels.find(channelName) == channels.end())
-                        {
-                            printf("não encontrou nada");
-                        }
-                        else
-                        {
-                            printf("dur\n");
-                        }
-                        
-                        //procurar se ja existia o canal e se sim conectar a ele
-                        //se não existir criar um novo canal
+                            //procurar se ja existia o canal e se sim conectar a ele    
+                            for(int j = 0; j < maxChannels; j++)
+                            {
+                                if( channelArray[j].channelName == channelName)
+                                {
+                                    clientArray[i].currentChannel = channelName;
+                                    std::cout << "Cliente " << cli.username << " entrou no canal " << channelName << " com sucesso" << std::endl;
+                                    channelExists = true;
+                                    break;
+                                }
+                            }
+                            //se não existir criar um novo canal
+                            if(!channelExists)
+                            {
+                                CreateChannel(channelArray, maxChannels, channelName, cli);
+                                std::cout << "Canal " << channelName << " criado com sucesso" << std::endl;
+                                clientArray[i].currentChannel = channelName;
+                                std::cout << "Cliente " << cli.username << " entrou no canal " << channelName << " com sucesso" << std::endl;
+                            }
+
+                        }     
                     }
                     //when the clients send a message with "/ping" the server send a message "/pong" back to the client
-                    
-                    // if (strcmp(buffer, "/ping\n") == 0)
-                    // {
-                    //     strcpy(buffer, "pong\n");
-                    //     send(cli.socket, buffer, strlen(buffer), 0);
-                    // }
-                    
-                    // else
-                    // {
-                    //     for (int j = 0; j < maxClients; j++)
-                    //     {
-                    //         //send the message to all clients, that way creating the chat
-                    //         if (clientArray[j].socket != 0)
-                    //         {
-                    //             strcpy(auxStr, cli.username);
-                    //             strcat(auxStr, ": ");
-                    //             strcat(auxStr, buffer);
-                    //             //if send the message to client fails 5 times, disconnect client from server.
-                    //             if (send(clientArray[j].socket, auxStr, strlen(auxStr), 0) != strlen(auxStr))
-                    //             {
-                    //                 j--;
-                    //                 sendToClientErrorsCnt++;
-                    //                 std::cout << "contador de erro: " << sendToClientErrorsCnt << std::endl;
-                    //                 if (sendToClientErrorsCnt == 5)
-                    //                 {
-                    //                     DisconnectClient(clientArray, j, address, addrlen);
-                    //                 }
-                    //             }
-                    //             else
-                    //             {
-                    //                 sendToClientErrorsCnt = 0;
-                    //                 std::cout << "contador de resetado" << std::endl;
-                    //             }
-                    //         }
-                    //     }
-                    // }
+                    else if (strcmp(buffer, "/ping\n") == 0)
+                    {
+                        strcpy(buffer, "pong\n");
+                        send(cli.socket, buffer, strlen(buffer), 0);
+                    }
+                    else
+                    {
+
+                        for (int j = 0; j < maxClients; j++)
+                        {
+
+                            //send the message to all clients, that way creating the chat
+                            if (clientArray[j].socket != 0 && clientArray[j].currentChannel == cli.currentChannel)
+                            {
+                                std::cout<< std::endl << "cliente " << cli.username << " mandando mensagem para " << clientArray[j].username << " no canal " << cli.currentChannel <<std::endl;
+                                strcpy(auxStr, cli.username);
+                                strcat(auxStr, ": ");
+                                strcat(auxStr, buffer);
+                                //if send the message to client fails 5 times, disconnect client from server.
+                                if (send(clientArray[j].socket, auxStr, strlen(auxStr), 0) != strlen(auxStr))
+                                {
+                                    j--;
+                                    sendToClientErrorsCnt++;
+                                    std::cout << "contador de erro: " << sendToClientErrorsCnt << std::endl;
+                                    if (sendToClientErrorsCnt == 5)
+                                    {
+                                        DisconnectClient(clientArray, j, address, addrlen);
+                                    }
+                                }
+                                else
+                                {
+                                    sendToClientErrorsCnt = 0;
+                                }
+                            }
+                        }
+                    }
                 }
+                // std::cout << "Saiu da leitura" << std::endl;
             }
         }
     }
 
     return 0;
+}
+
+void CreateChannel(channel *channelArray, int maxChannel, std::string newChannelName, client newChannelAdmin)
+{
+    //Adiciona as informações do novo canal no array de canais e adicioana a pessoa que o criou como adiministrador.
+    for(int i = 0; i < maxChannel; i++)
+    {   
+        if(channelArray[i].channelName == "")
+        {
+            channelArray[i].channelName = newChannelName;
+            channelArray[i].admin = newChannelAdmin;
+            break;
+        }
+    }
 }
 
 int InitServer(sockaddr_in *address, unsigned long *addrlen)

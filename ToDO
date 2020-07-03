@@ -33,3 +33,8 @@ Comandos apenas para administradores de canais:
 • /mute nomeUsurio - Faz com que um usuário não possa enviar mensagens neste canal
 • /unmute nomeUsurio - Retira o mute de um usuário.
 • /whois nomeUsurio - Retorna o endereço IP do usuário apenas para o administrador
+
+
+
+BUG: 
+• Se der /join quando já está em um canal, ele buga pq ta mandando como se fosse uma mensagem.

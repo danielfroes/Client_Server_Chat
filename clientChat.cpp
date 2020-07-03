@@ -86,9 +86,11 @@ void SendMessage(std::string nickname, int sock) {
         {
             ForceToJoinChannel(sock);
             isInChannel = true;
+
         }
         else
         {
+            
             std::getline(std::cin, msg);
 
             //disconnect from the server and closes the application if /quit ou ctrl-d
@@ -141,6 +143,7 @@ void ForceToJoinChannel(int sock)
             
         }
     }
+
     //Mandando o comando \join  inteiro para o servidor
     send(sock, option.c_str(), option.length(), 0);
 }
