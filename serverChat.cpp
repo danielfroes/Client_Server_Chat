@@ -29,6 +29,8 @@ typedef struct _client
     int socket;
     char username[MAX_MSG_LENGTH];
     std::string currentChannel;
+    bool isAdmin;
+    bool isMuted;
 } client;
 
 typedef struct _channel
@@ -38,14 +40,15 @@ typedef struct _channel
 } channel;
 
 
-
+int FindClient(client* clientArray, int maxClients, const char * nomeUsuario);
 int InitServer(sockaddr_in *address, unsigned long *addrlen);
 void DisconnectClient(client *clientArray, int pos, struct sockaddr_in address, int addrlen);
 int SetSockets(client *clientArray, int maxClients, int *serverSocket, fd_set *readfds);
 bool CheckForConnectionRequest(int *serverSocket, fd_set *readfds);
 void ConnectWithClient(client *clientArray, int maxClients, int *serverSocket, struct sockaddr_in address, int addrlen);
 bool CheckClientRequest(client cli, fd_set *readfds);
-void CreateChannel(channel *channelArray, int maxChannel, std::string newChannelName, client newChannelAdmin);
+void CreateChannel(channel *channelArray, int maxChannel, std::string newChannelName, client* newChannelAdmin);
+
 
 //** To do Servidor
 // - Servidor detectar os cliente que não estão recebendo mensagem e apos 5 tentativas, desconectar o cliente
@@ -75,6 +78,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < maxClients; i++)
     {
         clientArray[i].socket = 0;
+        clientArray[i].isAdmin = false;
     }
     for (int i = 0; i < maxChannels; i++)
     {
@@ -145,7 +149,7 @@ int main(int argc, char *argv[])
                             //se não existir criar um novo canal
                             if(!channelExists)
                             {
-                                CreateChannel(channelArray, maxChannels, channelName, cli);
+                                CreateChannel(channelArray, maxChannels, channelName, &clientArray[i]);
                                 std::cout << "Canal " << channelName << " criado com sucesso" << std::endl;
                                 clientArray[i].currentChannel = channelName;
                                 std::cout << "Cliente " << cli.username << " entrou no canal " << channelName << " com sucesso" << std::endl;
@@ -159,6 +163,70 @@ int main(int argc, char *argv[])
                         strcpy(buffer, "pong\n");
                         send(cli.socket, buffer, strlen(buffer), 0);
                     }
+                    else if(strBuffer.substr(0,6) == "/kick ")
+                    {
+                        if(cli.isAdmin == true){
+                            std::string nomeUsuario = strBuffer.substr(6,strBuffer.length()-7);
+                            int pos = FindClient(clientArray, maxClients, nomeUsuario.c_str());
+
+                            // DisconnectClient(clientArray, pos, address, addrlen);
+
+                            clientArray[pos].currentChannel = "";
+                            std::string auxiliar = "/disconnect";
+                            send(clientArray[pos].socket, auxiliar.c_str(), strlen(auxiliar.c_str()), 0);
+                        }
+                        else{
+                            std::string auxiliar = "Esse comando é exclusivo para o administrador do canal!\n";
+                            send(cli.socket, auxiliar.c_str(), strlen(auxiliar.c_str()), 0);
+                        }
+
+                    }
+                    else if(strBuffer.substr(0,6) == "/mute ")
+                    {
+                        if(cli.isAdmin == true){
+                            std::string nomeUsuario = strBuffer.substr(6,strBuffer.length()-7);
+                            int pos = FindClient(clientArray, maxClients, nomeUsuario.c_str());
+
+                            clientArray[pos].isMuted = true;
+                        }
+                        else{
+                            std::string auxiliar = "Esse comando é exclusivo para o administrador do canal!\n";
+                            send(cli.socket, auxiliar.c_str(), strlen(auxiliar.c_str()), 0);
+                        }
+                    }
+                    else if(strBuffer.substr(0,8) == "/unmute ")
+                    {
+                        if(cli.isAdmin == true){
+                            std::string nomeUsuario = strBuffer.substr(8,strBuffer.length()-9);
+                            int pos = FindClient(clientArray, maxClients, nomeUsuario.c_str());
+
+                            clientArray[pos].isMuted = false;
+                        }
+                        else{
+                            std::string auxiliar = "Esse comando é exclusivo para o administrador do canal!\n";
+                            send(cli.socket, auxiliar.c_str(), strlen(auxiliar.c_str()), 0);
+                        }
+                    }
+                    else if(strBuffer.substr(0,7) == "/whois ")
+                    {
+                        if(cli.isAdmin == true){
+                            std::string nomeUsuario = strBuffer.substr(7,strBuffer.length()-8);
+                            int pos = FindClient(clientArray, maxClients, nomeUsuario.c_str());
+
+                            getpeername(clientArray[pos].socket, (struct sockaddr *)&address, (socklen_t *)&addrlen);
+
+                            std::string auxiliar = "O IP do usuário " + nomeUsuario + " é " + inet_ntoa(address.sin_addr) +
+                                                    ", porta " + std::to_string(ntohs(address.sin_port)) + ".\n";
+
+                            send(cli.socket, auxiliar.c_str(), strlen(auxiliar.c_str()), 0);
+                        }
+                        else{
+                            printf("entrou aqui\n");
+                            std::string auxiliar = "Esse comando é exclusivo para o administrador do canal!\n";
+                            send(cli.socket, auxiliar.c_str(), strlen(auxiliar.c_str()), 0);
+                        }
+                        
+                    }
                     else
                     {
 
@@ -166,8 +234,9 @@ int main(int argc, char *argv[])
                         {
 
                             //send the message to all clients, that way creating the chat
-                            if (clientArray[j].socket != 0 && clientArray[j].currentChannel == cli.currentChannel)
+                            if (clientArray[j].socket != 0 and clientArray[j].currentChannel == cli.currentChannel and cli.isMuted == false and cli.currentChannel != "")
                             {
+                            
                                 std::cout<< std::endl << "cliente " << cli.username << " mandando mensagem para " << clientArray[j].username << " no canal " << cli.currentChannel <<std::endl;
                                 strcpy(auxStr, cli.username);
                                 strcat(auxStr, ": ");
@@ -199,7 +268,22 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void CreateChannel(channel *channelArray, int maxChannel, std::string newChannelName, client newChannelAdmin)
+int FindClient(client* clientArray, int maxClients, const char * nomeUsuario){
+    std::cout << "nomeUsuario = " << nomeUsuario << std::endl;
+    for (int i = 0; i < maxClients; i++)
+    {
+        std::cout << "clientArray username = " << clientArray[i].username << std::endl;
+        if(strcmp(clientArray[i].username, "") == 0){
+            return -1;
+        }
+        if(strcmp(clientArray[i].username, nomeUsuario) == 0){
+            return i;
+        }
+    }
+    
+}
+
+void CreateChannel(channel *channelArray, int maxChannel, std::string newChannelName, client* newChannelAdmin)
 {
     //Adiciona as informações do novo canal no array de canais e adicioana a pessoa que o criou como adiministrador.
     for(int i = 0; i < maxChannel; i++)
@@ -207,7 +291,8 @@ void CreateChannel(channel *channelArray, int maxChannel, std::string newChannel
         if(channelArray[i].channelName == "")
         {
             channelArray[i].channelName = newChannelName;
-            channelArray[i].admin = newChannelAdmin;
+            channelArray[i].admin = *newChannelAdmin;
+            newChannelAdmin->isAdmin = true;
             break;
         }
     }

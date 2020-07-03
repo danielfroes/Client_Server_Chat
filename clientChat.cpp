@@ -26,6 +26,8 @@ void ConnectToServer(int clientSock, std::string nickname);
 void sigintHandler(int sig_num) ;
 void ForceToJoinChannel(int sock);
 
+bool isInChannel;
+
 
 int main(int argc, char const *argv[]) {
 
@@ -78,7 +80,7 @@ void SendMessage(std::string nickname, int sock) {
     std::string msgAux;
     std::string msgDest;
 
-    bool isInChannel = false;
+    isInChannel = false;
 
     while (true) {
 
@@ -212,7 +214,13 @@ void ReadMessage(int sock) {
     while (true) {
         msgLength = read(sock, buffer, MAX_MSG_LENGTH + MAX_NICKNAME_LENGTH);
         buffer[msgLength] = '\0';
-        printf("%s", buffer);
+        std::string bufferStr = {buffer};
+        if(bufferStr == "/disconnect"){
+            printf("\nVocê foi desconectado do canal!\n");
+            isInChannel = false;
+        }
+        // else printf("%s", buffer);
+        std::cout << bufferStr << std::endl;
     }
 }
 
