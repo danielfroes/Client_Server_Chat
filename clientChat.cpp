@@ -217,6 +217,7 @@ void ReadMessage(int sock) {
         std::string bufferStr = {buffer};
         if(bufferStr == "/disconnect"){
             printf("\nVocê foi desconectado do canal!\n");
+            printf("\nPara continuar aperte enter ou digite \\quit\n\n");
             isInChannel = false;
         }
         // else printf("%s", buffer);
