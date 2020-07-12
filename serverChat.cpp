@@ -238,7 +238,16 @@ int main(int argc, char *argv[])
                             {
                             
                                 std::cout<< std::endl << "cliente " << cli.username << " mandando mensagem para " << clientArray[j].username << " no canal " << cli.currentChannel <<std::endl;
-                                strcpy(auxStr, cli.username);
+                                if(cli.isAdmin)
+                                {
+                                    strcpy(auxStr, "(admin) ");
+                                    strcat(auxStr, cli.username);
+                                }
+                                else
+                                {
+                                    strcpy(auxStr, cli.username);
+                                }
+                               
                                 strcat(auxStr, ": ");
                                 strcat(auxStr, buffer);
                                 //if send the message to client fails 5 times, disconnect client from server.

@@ -122,7 +122,7 @@ void ForceToJoinChannel(int sock)
     
     while (option.substr(0, 6) != "/join ")
     {
-        std::cout << "Para entrar em um canal use o comando \"/join nome_do_canal\" \n";
+        std::cout << "Para entrar em um canal use o comando \"/join #nome_do_canal\" ou \"/join &nome_do_canal\" \n";
         std::getline(std::cin, option);
         
 
