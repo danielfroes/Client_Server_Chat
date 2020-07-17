@@ -20,7 +20,7 @@ Pedro Henrique Nieuwenhoff - 10377729
 ##### COMO UTILIZAR
 Após o programa cliente ser executado de acordo com o passo 3 da seção anterior, o cliente deverá se conectar a um chat
 1. O programa solicitará ao usuário digitar um nome de usuário:
-   - O cliente deverá digitar seu nome de usuário através do comando ```/nickname nomeUsuario```, por exemplo ```/nickname LuBalador```;
+   - O cliente deverá digitar seu nome de usuário através do comando ```/nickname``` e depois um ``` nomeUsuario```, por exemplo ```/nickname LuBalador```;
 2. O programa solicitará ao usuário digitar o nome do chat que deseja entrar no formato ```/join #nome_do_canal``` ou ```/join &nome_do_canal```;
    - Ex: ```/join #RolezinhoSabadao```
    - Se o canal não existir, ele será criado e o usuário em questão será o administrador do canal;
