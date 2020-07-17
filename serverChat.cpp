@@ -220,7 +220,6 @@ int main(int argc, char *argv[])
                             send(cli.socket, auxiliar.c_str(), strlen(auxiliar.c_str()), 0);
                         }
                         else{
-                            printf("entrou aqui\n");
                             std::string auxiliar = "Esse comando é exclusivo para o administrador do canal!\n";
                             send(cli.socket, auxiliar.c_str(), strlen(auxiliar.c_str()), 0);
                         }
@@ -254,7 +253,6 @@ int main(int argc, char *argv[])
                                 {
                                     j--;
                                     sendToClientErrorsCnt++;
-                                    std::cout << "contador de erro: " << sendToClientErrorsCnt << std::endl;
                                     if (sendToClientErrorsCnt == 5)
                                     {
                                         DisconnectClient(clientArray, j, address, addrlen);
@@ -288,7 +286,7 @@ int FindClient(client* clientArray, int maxClients, const char * nomeUsuario){
             return i;
         }
     }
-    
+    return -1;
 }
 
 void CreateChannel(channel *channelArray, int maxChannel, std::string newChannelName, client* newChannelAdmin)

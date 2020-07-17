@@ -16,7 +16,7 @@
 #define MAX_NICKNAME_LENGTH 50
 #define MAX_CHANNELNAME_LENGTH 200
 #define LOCALHOST_IP "127.0.0.1"
-//** To do Cliente
+
 void ChangeNickname(std::string *nickname);
 bool CheckChannelName(std::string channelName);
 void ReadMessage(int sock);
@@ -35,7 +35,7 @@ int main(int argc, char const *argv[]) {
 
     /* Set the SIGINT (Ctrl-C) signal handler to sigintHandler
        Refer http://en.cppreference.com/w/c/program/signal */
-    // signal(SIGINT, sigintHandler);
+    signal(SIGINT, sigintHandler);
     std::string option;
     std::string nickname;
     std::string serverIP;
@@ -43,11 +43,11 @@ int main(int argc, char const *argv[]) {
 
     // criando a socket do cliente
     int clientSock = CreateSocket();
-    // while(option != "/nickname")
-    // {
-    //     std::cout << "Para criar um apelido, digite \"/nickname\"!" << std::endl;
-    //     std::cin >> option;
-    // }
+    while(option != "/nickname")
+    {
+        std::cout << "Para criar um apelido, digite \"/nickname\"!" << std::endl;
+        std::getline(std::cin, option);
+    }
     ChangeNickname(&nickname);
 
     std::cout << nickname << std::endl;
