@@ -11,7 +11,8 @@
 #include <thread>
 #include <signal.h>
 
-#define PORT 8080
+#define PORT 37772
+#define IP_SERVER "189.111.86.247"
 #define MAX_MSG_LENGTH 2048
 #define MAX_NICKNAME_LENGTH 50
 #define MAX_CHANNELNAME_LENGTH 200
@@ -252,7 +253,7 @@ void ConnectToServer(int clientSock, std::string nickname) {
     // configurando o endereço do servidor
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0)  // Convert IPv4 and IPv6 addresses from text to binary form
+    if (inet_pton(AF_INET, IP_SERVER, &serv_addr.sin_addr) <= 0)  // Convert IPv4 and IPv6 addresses from text to binary form
     {
         printf("\nInvalid address/ Address not supported \n");
         exit(-1);
