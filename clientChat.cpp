@@ -11,18 +11,18 @@
 #include <thread>
 #include <signal.h>
 
-#define PORT 8080
+#define PORT 37772
 #define MAX_MSG_LENGTH 2048
 #define MAX_NICKNAME_LENGTH 50
 #define MAX_CHANNELNAME_LENGTH 200
-
+#define LOCALHOST_IP "127.0.0.1"
 //** To do Cliente
 void ChangeNickname(std::string *nickname);
 bool CheckChannelName(std::string channelName);
 void ReadMessage(int sock);
 void SendMessage(std::string nickname, int sock);
 int CreateSocket();
-void ConnectToServer(int clientSock, std::string nickname);
+bool ConnectToServer(int clientSock, std::string nickname, std::string serverIP);
 void sigintHandler(int sig_num) ;
 void ForceToJoinChannel(int sock);
 
@@ -30,7 +30,7 @@ bool isInChannel;
 
 
 int main(int argc, char const *argv[]) {
-
+    
 
 
     /* Set the SIGINT (Ctrl-C) signal handler to sigintHandler
@@ -38,7 +38,8 @@ int main(int argc, char const *argv[]) {
     // signal(SIGINT, sigintHandler);
     std::string option;
     std::string nickname;
-
+    std::string serverIP;
+    bool isConnected = false;
 
     // criando a socket do cliente
     int clientSock = CreateSocket();
@@ -50,16 +51,29 @@ int main(int argc, char const *argv[]) {
     ChangeNickname(&nickname);
 
     std::cout << nickname << std::endl;
+    //tenta se conectar com o servidor a depender do ip passado pelo usuário 
+    while (!isConnected)
+    {
+        option = "";
+        //only connects to server if the user types the right command
+        while(option.substr(0,8) != "/connect")
+        {
+            std::cout << "Para conectar ao chat, digite \"/connect IP_do_Server\"!" << std::endl;
+            std::cout << "Caso não seja inserido nenhum ip, será feita a tentativa de se conectar ao localhost (IP: 127.0.0.1)" << std::endl;
+            std::getline(std::cin, option);
+        }
+        if(option.length() > 9)
+        {
+            serverIP = option.substr(9,20);
+        }
+        else
+        {
+            serverIP = LOCALHOST_IP;
+        }
 
-    // //only connects to server if the user types the right command
-    // while(option != "/connect")
-    // {
-    //     std::cout << "Para conectar ao chat, digite \"/connect\"!" << std::endl;
-    //     std::cin >> option;
-    // }
-    ConnectToServer(clientSock, nickname);
-    std::cin.ignore();
-    
+        std::cout << serverIP << std::endl;
+        isConnected = ConnectToServer(clientSock, nickname, serverIP);
+    }
     // definição execução das threads de envio e recebimento
     // de mensagens entre os clients e o server
     std::thread readThread(ReadMessage, clientSock);
@@ -79,6 +93,7 @@ void SendMessage(std::string nickname, int sock) {
     std::string msg;
     std::string msgAux;
     std::string msgDest;
+    
 
     isInChannel = false;
 
@@ -153,7 +168,7 @@ void ForceToJoinChannel(int sock)
 void ChangeNickname(std::string *nickname)
 {
     printf("Digite um nome de usuário para entrar no chat: ");
-    std::cin >> *nickname;
+    std::getline(std::cin, *nickname);
     while(nickname->length() > MAX_NICKNAME_LENGTH)
     {
         printf("\nO apelido digitado é maior que o limite de %d caracteres. Digite novamente um apelido: ", MAX_NICKNAME_LENGTH);
@@ -220,8 +235,10 @@ void ReadMessage(int sock) {
             printf("\nPara continuar aperte enter ou digite \\quit\n\n");
             isInChannel = false;
         }
-        // else printf("%s", buffer);
-        std::cout << bufferStr << std::endl;
+        else
+        {
+            std::cout << bufferStr << std::endl;
+        }
     }
 }
 
@@ -244,7 +261,8 @@ int CreateSocket() {
 // func ConnectToServer: conecta o novo client ao IP do
 // server que está atualmente rodando na rede
 // @param: socket do client
-void ConnectToServer(int clientSock, std::string nickname) {
+bool ConnectToServer(int clientSock, std::string nickname, std::string serverIP) {
+    
     int valread;
     char welcomeMsg[1000] = {0};
     struct sockaddr_in serv_addr;
@@ -252,23 +270,24 @@ void ConnectToServer(int clientSock, std::string nickname) {
     // configurando o endereço do servidor
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0)  // Convert IPv4 and IPv6 addresses from text to binary form
+    if (inet_pton(AF_INET, serverIP.c_str(), &serv_addr.sin_addr) <= 0)  // Convert IPv4 and IPv6 addresses from text to binary form
     {
-        printf("\nInvalid address/ Address not supported \n");
-        exit(-1);
+        printf("\nERRO: Enderço de IP invalido/ Endereço de IP não suportado \n");
+        return false;
     }
 
     // procura o servidor e conecta a socket
     if (connect(clientSock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
-        printf("\nConnection Failed \n");
-        exit(-1);
+        printf("\nERRO: Falha na conexão \n");
+        return false;
     }
     // Manda as requisições
     send(clientSock, nickname.c_str(), nickname.length(), 0);
 
     valread = read(clientSock, welcomeMsg, 1000);
     printf("%s\n", welcomeMsg);
+    return true;
 }
 
 

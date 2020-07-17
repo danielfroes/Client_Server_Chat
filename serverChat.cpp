@@ -16,7 +16,7 @@
 
 #define TRUE 1
 #define FALSE 0
-#define PORT 8080
+#define PORT 37772
 
 #define MAX_USERS_NUMBER 100
 #define MAX_MSG_LENGTH 2048
@@ -199,7 +199,6 @@ int main(int argc, char *argv[])
                         if(cli.isAdmin == true){
                             std::string nomeUsuario = strBuffer.substr(8,strBuffer.length()-9);
                             int pos = FindClient(clientArray, maxClients, nomeUsuario.c_str());
-
                             clientArray[pos].isMuted = false;
                         }
                         else{
@@ -326,10 +325,12 @@ int InitServer(sockaddr_in *address, unsigned long *addrlen)
         exit(EXIT_FAILURE);
     }
 
+
     // type of socket created
     address->sin_family = AF_INET;
     address->sin_addr.s_addr = INADDR_ANY;
     address->sin_port = htons(PORT);
+
 
     // bind the socket to localhost port 8888
     if (bind(serverSocket, (struct sockaddr *)address, sizeof(*address)) < 0)
